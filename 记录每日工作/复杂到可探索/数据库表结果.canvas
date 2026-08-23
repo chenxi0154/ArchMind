@@ -1,0 +1,27 @@
+{
+	"nodes":[
+		{"id":"d918176e21f9122c","x":-980,"y":420,"width":1302,"height":439,"color":"#3687d3","type":"group","label":"候选业务根据"},
+		{"id":"964f5b96c583ee80","x":-1420,"y":-160,"width":631,"height":350,"color":"4","type":"group","label":"项目概况分析"},
+		{"id":"a88befa14159aa9a","type":"text","text":"Project项目表\nid\nuser_id\nname\ndescription\nlanguage\nframework\ngit_url\nversion\nstatus\ncreate_time","x":-600,"y":-599,"width":250,"height":321},
+		{"id":"c1c2a054e92f82b6","type":"text","text":"file文件表\nid\nproject_id\nparent_id\nfile_name\nfile_path\nfile_type\nfile_size\nlanguage\nhash\ncreate_time","x":-600,"y":-143,"width":250,"height":312},
+		{"id":"8821e629dc544742","type":"text","text":"user用户表\nid\nusername\npassword\nemail\ncreate_time\nupdate_time","x":-596,"y":-1120,"width":246,"height":208},
+		{"id":"ef34183caded950b","type":"text","text":"ai_analysis_task\n\n\nid\nproject_id\nanalysis_type\ntarget_type\ntarget_id\nprompt\nresponse\nmodel\nstatus\ncreate_time","x":-1576,"y":1065,"width":346,"height":335},
+		{"id":"c527e8c4bc15d24a","type":"text","text":"business_candidate候选业务表\nid\nproject_id\nname\ndescription\nsource_type\nconfidence\nfile_count\nelement_count\nstatus","x":-885,"y":1170,"width":250,"height":328},
+		{"id":"7154883c18c6ea70","type":"text","text":"business_domain业务领域\n\nid\nproject_id\ncandidate_id\nname\ndescription\nbusiness_goal\nboundary\nimportance\nanalysis_result_json","x":-1040,"y":1593,"width":250,"height":308},
+		{"id":"156565a347ec71f9","type":"text","text":"business_domain_file业务领域与文件关系\n\nid\n\nbusiness_domain_id\n\nfile_id\n\nrelation_type\n\nscore\n","x":-660,"y":1605,"width":391,"height":296},
+		{"id":"3f82d96fac4a44e7","type":"text","text":"capability表\n\nid\nbusiness_domain_id\nname\ndescription\nbusiness_value\ninput\noutput\nstatus\nanalysis_json","x":-1010,"y":2040,"width":250,"height":307},
+		{"id":"b4d73289c5cae44a","type":"text","text":"entity_domain实体类领域\n\nid\nproject_id\nname\ndescription\ntable_name\nentity_type","x":-660,"y":2121,"width":280,"height":226},
+		{"id":"883bdd44020ae5bd","type":"text","text":"code_relation代码关系表\n\nid\nproject_id\nsource_element_id\ntarget_element_id\nrelation_type","x":-840,"y":528,"width":250,"height":220,"color":"6"},
+		{"id":"995c1457a16a788d","type":"text","text":"entity_code_mapper实体与代码关系\n\nid\nentity_id\ncode_element_id\nrelation_type","x":-460,"y":547,"width":368,"height":183,"color":"6"},
+		{"id":"eb3fe28ae1bc8943","type":"text","text":"project_source项目资源表\n\nid\nproject_id\nsource_type\nfile_id\nanalysis_status\ncreate_time","x":-1400,"y":-140,"width":250,"height":310},
+		{"id":"c06479826c9c350a","type":"text","text":"project_dependency 依赖表\nid\nproject_id\ngroup_id\nartifact_id\nversion\ntype","x":-1059,"y":-140,"width":250,"height":294},
+		{"id":"535cfdf693113d33","type":"text","text":"capability_code_mapper\n能力和代码关系\n\nid\ncapability_id\ncode_element_id\nrelation_type","x":-1320,"y":1700,"width":241,"height":218,"color":"6"},
+		{"id":"6a79dd4ae36df79a","type":"text","text":"code_element代码元素表\n\nid\nfile_id\nparent_id\nelement_type\nclass_name\nstart_line\nend_line\nmetadata_json","x":0,"y":484,"width":250,"height":309,"color":"6"}
+	],
+	"edges":[
+		{"id":"3e781e408b6cc7cf","fromNode":"8821e629dc544742","fromSide":"bottom","toNode":"a88befa14159aa9a","toSide":"top"},
+		{"id":"23333b9dbe9195a9","fromNode":"a88befa14159aa9a","fromSide":"bottom","toNode":"c1c2a054e92f82b6","toSide":"top"},
+		{"id":"2400fa3ab0fca1b4","fromNode":"c1c2a054e92f82b6","fromSide":"left","toNode":"964f5b96c583ee80","toSide":"right"},
+		{"id":"e3bf76e29e4d4fab","fromNode":"c1c2a054e92f82b6","fromSide":"bottom","toNode":"d918176e21f9122c","toSide":"top"}
+	]
+}

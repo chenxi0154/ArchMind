@@ -21,7 +21,7 @@ import java.io.IOException;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class AuthenticationEntryPointImpl implements AuthenticationEntryPoint {
+public final class AuthenticationEntryPointImpl implements AuthenticationEntryPoint {
 
     private  ObjectMapper objectMapper;
 

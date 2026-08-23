@@ -11,15 +11,15 @@ import com.example.archmind.dto.response.LoginResponse;
 import com.example.archmind.entity.User;
 import com.example.archmind.service.AuthService;
 import com.example.archmind.service.UserService;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.java.Log;
-import org.antlr.runtime.Token;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
 
-import javax.xml.transform.Result;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
+@Service
+@RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
     // ========== Redis Key 前缀 ==========
@@ -35,10 +35,10 @@ public class AuthServiceImpl implements AuthService {
     private static final Long REFRESH_TOKEN_EXPIRE = 604800L;   // 7 天
 
 
-    private UserService userService;
-    private JwtUtil jwtUtil;
-    private RedisUtil redisUtil;
-    private PasswordEncoder passwordEncoder;
+    private  UserService userService;
+    private  JwtUtil jwtUtil;
+    private  RedisUtil redisUtil;
+    private  PasswordEncoder passwordEncoder;
     @Override
     public LoginResponse login(LoginRequest request ,String clientIp){
 

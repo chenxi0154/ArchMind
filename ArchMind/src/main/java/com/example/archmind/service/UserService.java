@@ -2,7 +2,9 @@ package com.example.archmind.service;
 
 import com.example.archmind.dto.request.RegisterRequest;
 import com.example.archmind.entity.User;
+import org.springframework.stereotype.Service;
 
+@Service
 public interface UserService {
 
 //写方法是 类型名＋方法名

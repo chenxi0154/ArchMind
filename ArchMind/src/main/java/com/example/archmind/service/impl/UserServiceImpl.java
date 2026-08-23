@@ -6,10 +6,11 @@ import com.example.archmind.dao.UserMapper;
 import com.example.archmind.dto.request.RegisterRequest;
 import com.example.archmind.entity.User;
 import com.example.archmind.service.UserService;
+import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-
+@Component
 public class UserServiceImpl implements UserService {
     private UserMapper userMapper;
 

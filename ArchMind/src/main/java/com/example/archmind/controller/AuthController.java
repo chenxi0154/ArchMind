@@ -12,15 +12,17 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
+@RequiredArgsConstructor
 //身份标签
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
-    private UserService userService;
-    private AuthService authService;
+    private final UserService userService;
+    private final AuthService authService;
 
     @PostMapping("/register")
     public Result<UserInfoResponse> register(@Valid@RequestBody RegisterRequest request){
