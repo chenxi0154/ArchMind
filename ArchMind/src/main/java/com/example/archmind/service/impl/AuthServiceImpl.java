@@ -35,10 +35,10 @@ public class AuthServiceImpl implements AuthService {
     private static final Long REFRESH_TOKEN_EXPIRE = 604800L;   // 7 天
 
 
-    private  UserService userService;
-    private  JwtUtil jwtUtil;
-    private  RedisUtil redisUtil;
-    private  PasswordEncoder passwordEncoder;
+    private final UserService userService;
+    private final JwtUtil jwtUtil;
+    private final RedisUtil redisUtil;
+    private final PasswordEncoder passwordEncoder;
     @Override
     public LoginResponse login(LoginRequest request ,String clientIp){
 

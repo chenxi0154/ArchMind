@@ -6,16 +6,20 @@ import com.example.archmind.dao.UserMapper;
 import com.example.archmind.dto.request.RegisterRequest;
 import com.example.archmind.entity.User;
 import com.example.archmind.service.UserService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 @Component
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private UserMapper userMapper;
-
+    private final PasswordEncoder passwordEncoder;
     @Override
     @Transactional
+
     public User UserRegister(RegisterRequest request){
         if (this.existsByUsername(request.getUsername())){
             throw new BusinessException("用户名已被使用");
@@ -24,7 +28,7 @@ public class UserServiceImpl implements UserService {
         User user = new User();
 //        然后读取参数存到这个实体类中
         user.setUsername(request.getUsername());
-        user.setPassword(request.getPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setEmail(request.getEmail());
         user.setPhone(request.getPhone());
 
@@ -53,12 +57,13 @@ public class UserServiceImpl implements UserService {
 
         return userMapper.selectOne(wrapper);
     }
+//    更行用户的
 @Override
     public void updateLoginInfo(Long userId,String ip){
         User user = new User();
         user.setId(userId);
         user.setLastLoginIp(ip);
         user.setLastLoginTime(LocalDateTime.now());
-        userMapper.insert(user);
+        userMapper.updateById(user);
     }
 }

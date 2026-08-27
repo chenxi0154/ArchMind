@@ -23,7 +23,7 @@ public class AuthController {
 
     private final UserService userService;
     private final AuthService authService;
-
+//注册
     @PostMapping("/register")
     public Result<UserInfoResponse> register(@Valid@RequestBody RegisterRequest request){
 
@@ -40,7 +40,7 @@ public class AuthController {
 
         return Result.success(response);
     }
-
+//登录
     @PostMapping("/login")
     public Result<LoginResponse> Login(@Valid@RequestBody LoginRequest request, HttpServletRequest httpSRequest){
         String clientIp = getClientIp(httpSRequest);
