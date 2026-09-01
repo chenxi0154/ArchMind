@@ -148,7 +148,7 @@ public class AuthServiceImpl implements AuthService {
         String newTokenKey = TOKEN_PREFIX + newAccessToken;
         redisUtil.set(newTokenKey, userId.toString(), ACCESS_TOKEN_EXPIRE, TimeUnit.SECONDS);
 
-        String newRefreshKey = TOKEN_PREFIX + newAccessToken;
+        String newRefreshKey = REFRESH_TOKEN_PREFIX + newRefreshToken;
         redisUtil.set(newRefreshKey, userId.toString(), REFRESH_TOKEN_EXPIRE, TimeUnit.SECONDS);
 
         // 8.3 更新用户 Token 列表

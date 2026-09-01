@@ -7,19 +7,46 @@ jwt:
 
 
 spring:
-#  redis配置
-   data:
+  ai:
+    model:
+      # 当前尚未配置模型 API Key，避免 DeepSeek/OpenAI 自动创建模型 Bean。
+      # 接入模型时改为 deepseek 或 openai，并通过环境变量提供对应 API Key。
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+  # 数据源配置（本地开发先用 SQLite，接入 MySQL/PostgreSQL 时替换）
+  datasource:
+    url: jdbc:sqlite:./archmind.db
+    driver-class-name: org.sqlite.JDBC
+    # SQLite 不适合连接池，用无池的 DriverManagerDataSource 更稳定
+    type: org.springframework.jdbc.datasource.DriverManagerDataSource
+  sql:
+    init:
+      # SQLite 不属于 Spring 默认识别的内嵌库，需手动开启 schema.sql 执行
+      mode: always
+      schema-locations: classpath:schema.sql
+  # redis配置
+  data:
     redis:
       port: 6379
       host: localhost
       database: 0
       timeout: 3000ms
-#   文件上传配置
-   servlet:
+  # 文件上传配置
+  servlet:
     multipart:
       enabled: true
       max-file-size: 500MB
       max-request-size: 500MB
 
 upload:
-  base-path:
+  # 代码上传后统一落地的根目录（本地开发用相对路径，生产环境可改为 /data/code-workspace）
+  base-dir: ./code-workspace
+  # 压缩包大小限制，单位 MB
+  max-zip-size-mb: 500
+  # git 超时时间，单位秒
+  git-time-out-seconds: 60

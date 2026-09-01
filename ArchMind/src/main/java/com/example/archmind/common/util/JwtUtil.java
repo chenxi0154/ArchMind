@@ -3,6 +3,8 @@ package com.example.archmind.common.util;
 
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -11,16 +13,20 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import static reactor.netty.http.HttpConnectionLiveness.log;
+@Slf4j
 @Component
 public class JwtUtil {
 
+    @Value("${jwt.secret}")
     private String secret;
 
-    private String accessTokenExpire;
+    @Value("${jwt.access-token-expire}")
+    private Long accessTokenExpire;
 
-    private String refreshTokenExpire;
+    @Value("${jwt.refresh-token-expire}")
+    private Long refreshTokenExpire;
 
+    @Value("${jwt.issuer}")
     private String issuer;
 
 //    获取签名密钥，也就是基于UTF-8编码密钥字节数组生成的算法密钥
@@ -35,7 +41,7 @@ public class JwtUtil {
         claims.put("username", username);
         claims.put("type", "access");
 
-        return generateToken(claims, Long.valueOf(accessTokenExpire));
+        return generateToken(claims, accessTokenExpire);
     }
 
 //    生成refreshToken
@@ -45,7 +51,7 @@ public String generateRefreshToken(Long userId, String username) {
     claims.put("username", username);
     claims.put("type", "refresh");
 
-    return generateToken(claims, Long.valueOf(refreshTokenExpire));
+    return generateToken(claims, refreshTokenExpire);
     }
 
     private String generateToken(Map<String, Object> claims, Long expireSeconds) {
@@ -65,6 +71,7 @@ public String generateRefreshToken(Long userId, String username) {
         try {
             return Jwts.parser()
                     .verifyWith(getSecretKey())
+                    .requireIssuer(issuer)
                     .build()
                     .parseSignedClaims(token)
                     .getPayload();

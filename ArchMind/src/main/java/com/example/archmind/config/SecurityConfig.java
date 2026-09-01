@@ -1,5 +1,6 @@
 package com.example.archmind.config;
 
+import com.example.archmind.common.handler.AccessDeniedHandlerImpl;
 import com.example.archmind.common.handler.AuthenticationEntryPointImpl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -13,7 +14,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.access.AccessDeniedHandlerImpl;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -31,7 +31,7 @@ public class SecurityConfig {
 
     private final AuthenticationEntryPointImpl authenticationEntryPoint;
 
-    private  AccessDeniedHandlerImpl accessDeniedHandler;
+    private  final AccessDeniedHandlerImpl accessDeniedHandler;
 
     /**
      * 密码编码器

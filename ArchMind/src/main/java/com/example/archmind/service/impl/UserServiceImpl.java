@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @Component
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
-    private UserMapper userMapper;
+    private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     @Override
     @Transactional

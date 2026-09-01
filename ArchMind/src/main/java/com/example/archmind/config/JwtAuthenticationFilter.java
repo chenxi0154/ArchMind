@@ -7,6 +7,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,12 +18,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-@Component@Slf4j
+
+@Component
+@Slf4j
+@RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private AuthService authService;
-    private JwtUtil jwtUtil;
-    private UserDetailsService userDetailsService;
+    private final AuthService authService;
+    private final JwtUtil jwtUtil;
+    private final UserDetailsService userDetailsService;
 
     // 白名单路径（不需要认证）
 
@@ -105,6 +109,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 //            截取从第7为开始到结尾的字符串
             return bearerToken.substring(7);
         }
+
 //       从参数中拿
         String token = request.getParameter("accessToken" );
         if (token!= null&& !token.isEmpty()){
