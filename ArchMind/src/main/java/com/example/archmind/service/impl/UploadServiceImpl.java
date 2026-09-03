@@ -1,21 +1,17 @@
 package com.example.archmind.service.impl;
 
 import com.example.archmind.common.exception.BusinessException;
-import com.example.archmind.common.security.SecurityUser;
+import com.example.archmind.common.util.CheckProjectUtil;
 import com.example.archmind.config.UploadProperties;
-import com.example.archmind.dao.ProjectMapper;
 import com.example.archmind.dao.ProjectSourceMapper;
 import com.example.archmind.dto.response.UploadResponse;
 import com.example.archmind.entity.FileEntity;
-import com.example.archmind.entity.Project;
 import com.example.archmind.entity.ProjectSource;
 import com.example.archmind.service.FileScannerService;
 import com.example.archmind.service.UploadService;
 import com.example.archmind.service.ZipExtractService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -42,17 +38,18 @@ public class UploadServiceImpl implements UploadService {
     private static final String STATUS_FAILED = "FAILED";
 
     private final UploadProperties uploadProperties;
-    private final ProjectMapper projectMapper;
     private final ProjectSourceMapper projectSourceMapper;
     private final ZipExtractService zipExtractService;
     private final FileScannerService fileScannerService;
+    private final CheckProjectUtil checkProjectUtil;
 
     @Override
     public UploadResponse upload(Long projectId, MultipartFile file) {
         // 1. 安全基础校验
         validateFile(file);
+
         // 2. 校验项目存在且属于当前用户
-        Project project = checkProject(projectId);
+        checkProjectUtil.checkProject(projectId);
 
         // 3. 先创建 project_source 记录，用其 ID 作为落盘目录名
         ProjectSource source = createSource(projectId, file.getOriginalFilename());
@@ -63,6 +60,7 @@ public class UploadServiceImpl implements UploadService {
             Files.createDirectories(sourceDir);
 
             Path zipPath = sourceDir.resolve(safeFileName(file.getOriginalFilename()));
+
             try (InputStream in = file.getInputStream()) {
                 Files.copy(in, zipPath, StandardCopyOption.REPLACE_EXISTING);
             }
@@ -100,15 +98,16 @@ public class UploadServiceImpl implements UploadService {
     }
 
     private void validateFile(MultipartFile file) {
+//        校验非空
         if (file == null || file.isEmpty()) {
             throw new BusinessException("上传文件为空");
         }
-
+//  大小限制
         long maxBytes = uploadProperties.getMaxZipSizeMb() * 1024 * 1024;
         if (file.getSize() > maxBytes) {
             throw new BusinessException("压缩包大小超过限制: " + uploadProperties.getMaxZipSizeMb() + "MB");
         }
-
+//  确定后缀为zip
         String name = file.getOriginalFilename();
         if (name == null || !name.toLowerCase().endsWith(".zip")) {
             throw new BusinessException("仅支持上传 .zip 压缩包");
@@ -122,28 +121,6 @@ public class UploadServiceImpl implements UploadService {
             }
         } catch (IOException e) {
             throw new BusinessException("读取上传文件失败");
-        }
-    }
-
-    private Project checkProject(Long projectId) {
-        if (projectId == null) {
-            throw new BusinessException("项目 ID 不能为空");
-        }
-        Project project = projectMapper.selectById(projectId);
-        if (project == null) {
-            throw new BusinessException("项目不存在: " + projectId);
-        }
-        checkOwnership(project);
-        return project;
-    }
-
-    private void checkOwnership(Project project) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof SecurityUser securityUser) {
-            Long userId = securityUser.getUserId();
-            if (userId != null && project.getUserId() != null && !userId.equals(project.getUserId())) {
-                throw new BusinessException("无权操作该项目");
-            }
         }
     }
 

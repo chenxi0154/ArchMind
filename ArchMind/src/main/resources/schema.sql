@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS "file" (
     file_type   VARCHAR(32),
     file_size   INTEGER,
     language    VARCHAR(64),
+    has_children INTEGER,
     hash        VARCHAR(128),
     create_time TEXT
 );

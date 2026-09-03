@@ -18,6 +18,7 @@ public class FileEntity {
     private String fileType;
     private Long fileSize;
     private String language;
+    private Boolean hasChildren;
     private String hash;
     private LocalDateTime createTime;
 }

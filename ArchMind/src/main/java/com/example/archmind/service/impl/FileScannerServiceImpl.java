@@ -97,14 +97,16 @@ public class FileScannerServiceImpl implements FileScannerService {
     }
 
     private void scanNode(Path node, Long projectId, Long parentId, Path rootDir, List<FileEntity> result) {
+        boolean isDir = Files.isDirectory(node, LinkOption.NOFOLLOW_LINKS);
+        List<Path> children = isDir ? listChildren(node) : List.of();
+
         FileEntity entity = buildEntity(node, projectId, parentId, rootDir);
+        entity.setHasChildren(isDir && !children.isEmpty());
         fileEntityMapper.insert(entity);
         result.add(entity);
 
-        if (Files.isDirectory(node, LinkOption.NOFOLLOW_LINKS)) {
-            for (Path child : listChildren(node)) {
-                scanNode(child, projectId, entity.getId(), rootDir, result);
-            }
+        for (Path child : children) {
+            scanNode(child, projectId, entity.getId(), rootDir, result);
         }
     }
 
