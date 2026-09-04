@@ -31,7 +31,6 @@
         <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
     <dependencies>
-
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -135,6 +134,7 @@
         </dependency>
 
     </dependencies>
+
     <dependencyManagement>
         <dependencies>
             <dependency>

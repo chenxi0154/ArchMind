@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 @Component
 @RequiredArgsConstructor
+
 public class UserServiceImpl implements UserService {
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
@@ -40,6 +41,7 @@ public class UserServiceImpl implements UserService {
 
         return user;
     }
+
 @Override
     public boolean existsByUsername(String username){
         LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
@@ -66,4 +68,5 @@ public class UserServiceImpl implements UserService {
         user.setLastLoginTime(LocalDateTime.now());
         userMapper.updateById(user);
     }
+    
 }

@@ -47,3 +47,17 @@ CREATE TABLE IF NOT EXISTS "file" (
     hash        VARCHAR(128),
     create_time TEXT
 );
+
+CREATE TABLE IF NOT EXISTS "project_overview" (
+    id                INTEGER PRIMARY KEY,
+    project_id        INTEGER NOT NULL,
+    project_type      VARCHAR(64),
+    summary           VARCHAR(512),
+    description       TEXT,
+    tech_stack_json   TEXT,
+    architecture_json TEXT,
+    modules_json      TEXT,
+    raw_response      TEXT,
+    model             VARCHAR(64),
+    create_time       TEXT
+);
