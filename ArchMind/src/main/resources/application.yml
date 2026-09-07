@@ -20,17 +20,17 @@ spring:
       api-key: ${DEEPSEEK_API_KEY}
       chat:
         model: deepseek-chat
+        base-url: https://api.deepseek.com
   # 数据源配置（本地开发先用 SQLite，接入 MySQL/PostgreSQL 时替换）
   datasource:
-    url: jdbc:sqlite:./archmind.db
-    driver-class-name: org.sqlite.JDBC
-    # SQLite 不适合连接池，用无池的 DriverManagerDataSource 更稳定
-    type: org.springframework.jdbc.datasource.DriverManagerDataSource
-  sql:
-    init:
-      # SQLite 不属于 Spring 默认识别的内嵌库，需手动开启 schema.sql 执行
-      mode: always
-      schema-locations: classpath:schema.sql
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:3306/archmind?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: archmind
+    password: ${MYSQL_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
   # redis配置
   data:
     redis:
@@ -38,6 +38,13 @@ spring:
       host: localhost
       database: 0
       timeout: 3000ms
+
+  neo4j:
+    uri: bolt://172.21.160.203:7687
+    authentication:
+      username: neo4j
+      password: ${NEO4J_PASSWORD}
+
   # 文件上传配置
   servlet:
     multipart:
