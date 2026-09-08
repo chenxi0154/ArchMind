@@ -111,11 +111,11 @@ Neo4j 代码当前零引用，暂不影响 MySQL 使用。
 
 ## 十、待办 / 风险
 
-- [ ] **在服务器执行 5 张表 DDL**（脚本已给，尚未执行）
-- [ ] 部署 Redis，并把 `spring.data.redis.host` 指向它
-- [ ] 设环境变量：`DEEPSEEK_API_KEY` / `MYSQL_HOST` / `MYSQL_PASSWORD` / `NEO4J_PASSWORD`
-- [ ] **更换弱口令**（root / archmind 曾用 `your_password`），收敛 `root@'%'`
-- [ ] `Test-NetConnection IP -Port 7687` 确认 Neo4j Bolt 是否放行
+- [x] **在服务器执行 5 张表 DDL**（脚本已给，尚未执行）
+- [x] 部署 Redis，并把 `spring.data.redis.host` 指向它
+- [x] 设环境变量：`DEEPSEEK_API_KEY` / `MYSQL_HOST` / `MYSQL_PASSWORD` / `NEO4J_PASSWORD`
+- [x] **更换弱口令**（root / archmind 曾用 `your_password`），收敛 `root@'%'`
+- [x] `Test-NetConnection IP -Port 7687` 确认 Neo4j Bolt 是否放行
 - [ ] register 冒烟（纯 MySQL 链路）→ 起 Redis 后测 login
 - [ ] `FileEntity` 表名改反引号（`file` 保留字隐患，一行）
 - [ ] `schema.sql` 仍是 SQLite 方言（已从 yml 摘除 init），后续删掉或换 Flyway
