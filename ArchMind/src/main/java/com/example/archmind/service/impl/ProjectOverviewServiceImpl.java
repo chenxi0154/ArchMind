@@ -11,8 +11,8 @@ import com.example.archmind.entity.ProjectOverview;
 import com.example.archmind.entity.ProjectSource;
 import com.example.archmind.service.FileContentService;
 import com.example.archmind.service.ProjectOverviewService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -176,7 +176,7 @@ public class ProjectOverviewServiceImpl implements ProjectOverviewService {
             entity.setTechStackJson(objectMapper.writeValueAsString(response.getTechStack()));
             entity.setArchitectureJson(objectMapper.writeValueAsString(response.getArchitecture()));
             entity.setModulesJson(objectMapper.writeValueAsString(response.getModules()));
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             throw new BusinessException("概况结果序列化失败: " + e.getMessage());
         }
         entity.setRawResponse(toJsonQuietly(response));
@@ -192,7 +192,7 @@ public class ProjectOverviewServiceImpl implements ProjectOverviewService {
     private String toJsonQuietly(Object value) {
         try {
             return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.warn("序列化 LLM 返回结果失败", e);
             return null;
         }

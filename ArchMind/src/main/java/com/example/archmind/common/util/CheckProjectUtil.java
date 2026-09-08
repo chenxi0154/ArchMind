@@ -26,13 +26,18 @@ public class CheckProjectUtil {
         checkOwnership(project);
     }
 
-    private void checkOwnership(Project project) {
+    public Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication != null && authentication.getPrincipal() instanceof SecurityUser securityUser) {
-            Long userId = securityUser.getUserId();
-            if (userId != null && project.getUserId() != null && !userId.equals(project.getUserId())) {
-                throw new BusinessException("无权操作该项目");
-            }
+            return securityUser.getUserId();
+        }
+        return null;
+    }
+
+    private void checkOwnership(Project project) {
+        Long userId = getCurrentUserId();
+        if (userId != null && project.getUserId() != null && !userId.equals(project.getUserId())) {
+            throw new BusinessException("无权操作该项目");
         }
     }
 }

@@ -2,7 +2,6 @@ package com.example.archmind.config;
 
 import com.example.archmind.common.handler.AccessDeniedHandlerImpl;
 import com.example.archmind.common.handler.AuthenticationEntryPointImpl;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -24,14 +23,7 @@ import java.util.Arrays;
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity  // 启用方法级权限控制（@PreAuthorize）
-@RequiredArgsConstructor
 public class SecurityConfig {
-
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
-
-    private final AuthenticationEntryPointImpl authenticationEntryPoint;
-
-    private  final AccessDeniedHandlerImpl accessDeniedHandler;
 
     /**
      * 密码编码器
@@ -54,7 +46,10 @@ public class SecurityConfig {
      * 安全过滤器链
      */
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                           JwtAuthenticationFilter jwtAuthenticationFilter,
+                                           AuthenticationEntryPointImpl authenticationEntryPoint,
+                                           AccessDeniedHandlerImpl accessDeniedHandler) throws Exception {
         http
                 // 1. 关闭 CSRF（JWT 无状态，不需要 CSRF）
                 .csrf(csrf -> csrf.disable())
@@ -103,11 +98,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // 允许的域名（生产环境具体配置）
-        configuration.setAllowedOrigins(Arrays.asList(
-                "http://localhost:3000",
-                "http://localhost:8080",
-                "http://127.0.0.1:3000"
+        // 允许的来源：开发期放开 localhost/127.0.0.1 任意端口（5173/5174/3000/8080 等均覆盖）
+        configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:*",
+                "http://127.0.0.1:*"
         ));
         // 允许的请求方法
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));

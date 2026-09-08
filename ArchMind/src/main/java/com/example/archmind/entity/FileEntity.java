@@ -7,7 +7,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("file")
+@TableName("`file`")
 public class FileEntity {
     @TableId
     private Long id;

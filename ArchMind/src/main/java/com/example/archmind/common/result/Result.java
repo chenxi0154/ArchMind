@@ -1,5 +1,8 @@
 package com.example.archmind.common.result;
 
+import lombok.Getter;
+
+@Getter
 public class Result<T> {
     private Integer code;
     private String message;

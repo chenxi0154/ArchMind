@@ -24,9 +24,9 @@ spring:
   # 数据源配置（本地开发先用 SQLite，接入 MySQL/PostgreSQL 时替换）
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://${MYSQL_HOST:127.0.0.1}:3306/archmind?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    url: jdbc:mysql://172.21.160.203:3306/archmind?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
     username: archmind
-    password: ${MYSQL_PASSWORD}
+    password: your_password
     hikari:
       maximum-pool-size: 10
       minimum-idle: 2
@@ -35,7 +35,7 @@ spring:
   data:
     redis:
       port: 6379
-      host: localhost
+      host: 172.21.160.203
       database: 0
       timeout: 3000ms
 
@@ -43,7 +43,7 @@ spring:
     uri: bolt://172.21.160.203:7687
     authentication:
       username: neo4j
-      password: ${NEO4J_PASSWORD}
+      password: 12345678
 
   # 文件上传配置
   servlet:
