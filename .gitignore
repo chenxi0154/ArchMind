@@ -3,3 +3,6 @@
 
 # 项目打包产物（不纳入版本控制）
 ArchMind.zip
+
+# 上传产物（代码仓库运行后落盘的 workspace）
+code-workspace/
