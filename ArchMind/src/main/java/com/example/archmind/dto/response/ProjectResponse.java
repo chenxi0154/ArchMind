@@ -16,5 +16,6 @@ public class ProjectResponse {
     private String gitUrl;
     private String version;
     private String status;
+    private String analysisStatus;
     private LocalDateTime createTime;
 }

@@ -1,11 +1,14 @@
 package com.example.archmind.service.impl;
 
+import com.example.archmind.common.constant.ProjectAnalysisStatus;
 import com.example.archmind.common.exception.BusinessException;
 import com.example.archmind.common.util.CheckProjectUtil;
 import com.example.archmind.config.UploadProperties;
+import com.example.archmind.dao.ProjectMapper;
 import com.example.archmind.dao.ProjectSourceMapper;
 import com.example.archmind.dto.response.UploadResponse;
 import com.example.archmind.entity.FileEntity;
+import com.example.archmind.entity.Project;
 import com.example.archmind.entity.ProjectSource;
 import com.example.archmind.service.FileScannerService;
 import com.example.archmind.service.UploadService;
@@ -38,6 +41,7 @@ public class UploadServiceImpl implements UploadService {
     private static final String STATUS_FAILED = "FAILED";
 
     private final UploadProperties uploadProperties;
+    private final ProjectMapper projectMapper;
     private final ProjectSourceMapper projectSourceMapper;
     private final ZipExtractService zipExtractService;
     private final FileScannerService fileScannerService;
@@ -78,6 +82,9 @@ public class UploadServiceImpl implements UploadService {
             source.setFileId(rootFileId);
             source.setAnalysisStatus(STATUS_PENDING);
             projectSourceMapper.updateById(source);
+
+            // 上传扫描完成：项目进入待分析状态
+            markProjectPending(projectId);
 
             return UploadResponse.builder()
                     .sourceId(source.getId())
@@ -122,6 +129,13 @@ public class UploadServiceImpl implements UploadService {
         } catch (IOException e) {
             throw new BusinessException("读取上传文件失败");
         }
+    }
+
+    private void markProjectPending(Long projectId) {
+        Project update = new Project();
+        update.setId(projectId);
+        update.setAnalysisStatus(ProjectAnalysisStatus.PENDING);
+        projectMapper.updateById(update);
     }
 
     private ProjectSource createSource(Long projectId, String fileName) {

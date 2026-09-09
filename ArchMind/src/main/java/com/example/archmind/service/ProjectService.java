@@ -10,4 +10,6 @@ public interface ProjectService {
     ProjectResponse createProject(Long userId, ProjectCreateRequest request);
 
     List<ProjectResponse> listMyProjects(Long userId);
+
+    void deleteProject(Long projectId);
 }

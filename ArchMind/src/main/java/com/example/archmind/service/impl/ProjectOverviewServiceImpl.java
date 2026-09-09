@@ -1,17 +1,22 @@
 package com.example.archmind.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.archmind.common.constant.ProjectAnalysisStatus;
 import com.example.archmind.common.exception.BusinessException;
+import com.example.archmind.common.util.RedisUtil;
 import com.example.archmind.dao.FileEntityMapper;
+import com.example.archmind.dao.ProjectMapper;
 import com.example.archmind.dao.ProjectOverviewMapper;
 import com.example.archmind.dao.ProjectSourceMapper;
 import com.example.archmind.dto.response.ProjectOverviewResponse;
 import com.example.archmind.entity.FileEntity;
+import com.example.archmind.entity.Project;
 import com.example.archmind.entity.ProjectOverview;
 import com.example.archmind.entity.ProjectSource;
 import com.example.archmind.service.FileContentService;
 import com.example.archmind.service.ProjectOverviewService;
 import tools.jackson.core.JacksonException;
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +28,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -37,37 +43,159 @@ public class ProjectOverviewServiceImpl implements ProjectOverviewService {
 
     private static final String DEFAULT_MODEL = "deepseek-chat";
 
+    /** overview 读缓存 key 前缀，删除项目时按同一规则清理 */
+    public static final String OVERVIEW_CACHE_KEY_PREFIX = "project:overview:";
+
+    private static final long OVERVIEW_CACHE_TTL_SECONDS = 30 * 60L;
+
     private final ProjectSourceMapper projectSourceMapper;
     private final FileEntityMapper fileEntityMapper;
     private final ProjectOverviewMapper projectOverviewMapper;
+    private final ProjectMapper projectMapper;
     private final FileContentService fileContentService;
     private final ChatModel chatModel;
     private final ObjectMapper objectMapper;
+    private final RedisUtil redisUtil;
 
     @Override
-    public ProjectOverviewResponse projectOverview(Long projectId) {
-        // 1. 定位项目落盘根目录（project_source.content 存的是解压根目录绝对路径）
-        ProjectSource source = findSource(projectId);
-        Path extractDir = Paths.get(source.getContent());
-        Long rootFileId = source.getFileId();
+    public ProjectOverviewResponse projectOverview(Long projectId, boolean force) {
+        // 幂等：非强刷时先读缓存、再读库；已分析过则直接返回，不重复调用 LLM
+        if (!force) {
+            ProjectOverviewResponse cached = readCachedOverview(projectId);
+            if (cached != null) {
+                return cached;
+            }
+            ProjectOverview existing = selectExisting(projectId);
+            if (existing != null) {
+                ProjectOverviewResponse response = toResponse(existing);
+                cacheOverview(projectId, response);
+                return response;
+            }
+        }
 
-        // 2. 读取 pom.xml 与 README
-        String pom = readPom(projectId, rootFileId, extractDir);
-        String readme = readReadme(projectId, rootFileId, extractDir);
+        try {
+            // 1. 定位项目落盘根目录（project_source.content 存的是解压根目录绝对路径）
+            ProjectSource source = findSource(projectId);
+            Path extractDir = Paths.get(source.getContent());
+            Long rootFileId = source.getFileId();
 
-        // 3. 裁剪 pom
-        String cutPom = cutPom(pom);
+            // 2. 读取 pom.xml 与 README
+            String pom = readPom(projectId, rootFileId, extractDir);
+            String readme = readReadme(projectId, rootFileId, extractDir);
 
-        // 4. 组装提示词
-        String prompt = buildPrompt(readme, cutPom);
+            // 3. 裁剪 pom
+            String cutPom = cutPom(pom);
 
-        // 5. 调用 LLM 得到结构化概况
-        ProjectOverviewResponse response = callLlm(prompt);
+            // 4. 组装提示词
+            String prompt = buildPrompt(readme, cutPom);
 
-        // 6. 写入数据库（幂等覆盖）
-        saveOverview(projectId, response);
+            // 5. 调用 LLM 得到结构化概况
+            ProjectOverviewResponse response = callLlm(prompt);
 
+            // 6. 落库（幂等覆盖）并置为已完成，同时写缓存
+            saveOverview(projectId, response);
+            updateAnalysisStatus(projectId, ProjectAnalysisStatus.COMPLETED);
+            cacheOverview(projectId, response);
+            return response;
+        } catch (BusinessException e) {
+            updateAnalysisStatusQuietly(projectId, ProjectAnalysisStatus.FAILED);
+            throw e;
+        } catch (Exception e) {
+            updateAnalysisStatusQuietly(projectId, ProjectAnalysisStatus.FAILED);
+            log.error("项目分析失败 projectId={}", projectId, e);
+            throw new BusinessException("项目分析失败: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public ProjectOverviewResponse projectDatabaseOverview(Long projectId) {
+        ProjectOverviewResponse cached = readCachedOverview(projectId);
+        if (cached != null) {
+            return cached;
+        }
+        ProjectOverview overview = selectExisting(projectId);
+        if (overview == null) {
+            throw new BusinessException("该项目尚未分析，请先点击分析生成概况");
+        }
+        ProjectOverviewResponse response = toResponse(overview);
+        cacheOverview(projectId, response);
         return response;
+    }
+
+    private void updateAnalysisStatus(Long projectId, String status) {
+        Project update = new Project();
+        update.setId(projectId);
+        update.setAnalysisStatus(status);
+        projectMapper.updateById(update);
+    }
+
+    private void updateAnalysisStatusQuietly(Long projectId, String status) {
+        try {
+            updateAnalysisStatus(projectId, status);
+        } catch (Exception e) {
+            log.warn("更新项目分析状态失败 projectId={}, status={}", projectId, status, e);
+        }
+    }
+
+    private String overviewCacheKey(Long projectId) {
+        return OVERVIEW_CACHE_KEY_PREFIX + projectId;
+    }
+
+    private ProjectOverviewResponse readCachedOverview(Long projectId) {
+        Object value = redisUtil.get(overviewCacheKey(projectId));
+        if (!(value instanceof String json) || json.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, new TypeReference<ProjectOverviewResponse>() {});
+        } catch (JacksonException e) {
+            log.warn("读取概况缓存失败 projectId={}", projectId, e);
+            return null;
+        }
+    }
+
+    private void cacheOverview(Long projectId, ProjectOverviewResponse response) {
+        try {
+            redisUtil.set(overviewCacheKey(projectId),
+                    objectMapper.writeValueAsString(response),
+                    OVERVIEW_CACHE_TTL_SECONDS, TimeUnit.SECONDS);
+        } catch (JacksonException e) {
+            log.warn("写入概况缓存失败 projectId={}", projectId, e);
+        }
+    }
+
+    private ProjectOverview selectExisting(Long projectId) {
+        return projectOverviewMapper.selectOne(
+                new LambdaQueryWrapper<ProjectOverview>()
+                        .eq(ProjectOverview::getProjectId, projectId)
+                        .orderByDesc(ProjectOverview::getId)
+                        .last("limit 1"));
+    }
+
+    private ProjectOverviewResponse toResponse(ProjectOverview overview) {
+        ProjectOverviewResponse response = new ProjectOverviewResponse();
+        response.setProjectType(overview.getProjectType());
+        response.setSummary(overview.getSummary());
+        response.setDescription(overview.getDescription());
+        response.setTechStack(readJson(overview.getTechStackJson(),
+                new TypeReference<List<ProjectOverviewResponse.TechStackItem>>() {}));
+        response.setArchitecture(readJson(overview.getArchitectureJson(),
+                new TypeReference<ProjectOverviewResponse.Architecture>() {}));
+        response.setModules(readJson(overview.getModulesJson(),
+                new TypeReference<List<ProjectOverviewResponse.ModuleItem>>() {}));
+        return response;
+    }
+
+    private <T> T readJson(String json, TypeReference<T> typeRef) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, typeRef);
+        } catch (JacksonException e) {
+            log.warn("读取概况 JSON 字段失败", e);
+            return null;
+        }
     }
 
     private ProjectSource findSource(Long projectId) {

@@ -1,24 +1,49 @@
 package com.example.archmind.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.example.archmind.common.constant.ProjectAnalysisStatus;
 import com.example.archmind.common.exception.BusinessException;
+import com.example.archmind.common.util.CheckProjectUtil;
+import com.example.archmind.common.util.RedisUtil;
+import com.example.archmind.config.UploadProperties;
+import com.example.archmind.dao.FileEntityMapper;
 import com.example.archmind.dao.ProjectMapper;
+import com.example.archmind.dao.ProjectOverviewMapper;
+import com.example.archmind.dao.ProjectSourceMapper;
 import com.example.archmind.dto.request.ProjectCreateRequest;
 import com.example.archmind.dto.response.ProjectResponse;
+import com.example.archmind.entity.FileEntity;
 import com.example.archmind.entity.Project;
+import com.example.archmind.entity.ProjectOverview;
+import com.example.archmind.entity.ProjectSource;
 import com.example.archmind.service.ProjectService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProjectServiceImpl implements ProjectService {
 
     private final ProjectMapper projectMapper;
+    private final ProjectSourceMapper projectSourceMapper;
+    private final FileEntityMapper fileEntityMapper;
+    private final ProjectOverviewMapper projectOverviewMapper;
+    private final UploadProperties uploadProperties;
+    private final CheckProjectUtil checkProjectUtil;
+    private final RedisUtil redisUtil;
 
     @Override
     public ProjectResponse createProject(Long userId, ProjectCreateRequest request) {
@@ -31,6 +56,7 @@ public class ProjectServiceImpl implements ProjectService {
         project.setDescription(request.getDescription());
         project.setGitUrl(request.getGitUrl());
         project.setStatus("CREATED");
+        project.setAnalysisStatus(ProjectAnalysisStatus.NO_SOURCE);
         project.setCreateTime(LocalDateTime.now());
         projectMapper.insert(project);
         return toResponse(project);
@@ -49,6 +75,51 @@ public class ProjectServiceImpl implements ProjectService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteProject(Long projectId) {
+
+        checkProjectUtil.checkProject(projectId);
+
+        if (projectId == null) {
+            throw new BusinessException("项目ID为空");
+        }
+        // 先删子表再删 project，避免服务器建表若带外键时的约束冲突
+        projectSourceMapper.delete(new LambdaQueryWrapper<ProjectSource>()
+                .eq(ProjectSource::getProjectId, projectId));
+        fileEntityMapper.delete(new LambdaQueryWrapper<FileEntity>()
+                .eq(FileEntity::getProjectId, projectId));
+        projectOverviewMapper.delete(new LambdaQueryWrapper<ProjectOverview>()
+                .eq(ProjectOverview::getProjectId, projectId));
+        projectMapper.deleteById(projectId);
+
+        // 磁盘删除 {baseDir}/{projectId}（含 zip 与解压源码）；失败仅告警，不影响库表删除结果，最多留孤儿目录
+        deleteDirectory(Paths.get(uploadProperties.getBaseDir())
+                .resolve(String.valueOf(projectId))
+                .toAbsolutePath()
+                .normalize());
+
+        // 清理该项目 overview 的 Redis 读缓存（key 不存在时无害）
+        redisUtil.delete(ProjectOverviewServiceImpl.OVERVIEW_CACHE_KEY_PREFIX + projectId);
+    }
+
+    private void deleteDirectory(Path dir) {
+        if (dir == null || !Files.exists(dir)) {
+            return;
+        }
+        try (Stream<Path> paths = Files.walk(dir)) {
+            paths.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (IOException e) {
+                    log.warn("删除文件失败: {}", p);
+                }
+            });
+        } catch (IOException e) {
+            log.error("清理项目工作区目录失败, dir={}", dir, e);
+        }
+    }
+
     private ProjectResponse toResponse(Project project) {
         return ProjectResponse.builder()
                 .id(project.getId())
@@ -59,6 +130,7 @@ public class ProjectServiceImpl implements ProjectService {
                 .gitUrl(project.getGitUrl())
                 .version(project.getVersion())
                 .status(project.getStatus())
+                .analysisStatus(project.getAnalysisStatus())
                 .createTime(project.getCreateTime())
                 .build();
     }
