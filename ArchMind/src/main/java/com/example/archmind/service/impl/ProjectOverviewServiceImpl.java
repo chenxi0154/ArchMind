@@ -1,16 +1,13 @@
 package com.example.archmind.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.example.archmind.common.constant.ProjectAnalysisStatus;
 import com.example.archmind.common.exception.BusinessException;
 import com.example.archmind.common.util.RedisUtil;
 import com.example.archmind.dao.FileEntityMapper;
-import com.example.archmind.dao.ProjectMapper;
 import com.example.archmind.dao.ProjectOverviewMapper;
 import com.example.archmind.dao.ProjectSourceMapper;
 import com.example.archmind.dto.response.ProjectOverviewResponse;
 import com.example.archmind.entity.FileEntity;
-import com.example.archmind.entity.Project;
 import com.example.archmind.entity.ProjectOverview;
 import com.example.archmind.entity.ProjectSource;
 import com.example.archmind.service.FileContentService;
@@ -51,60 +48,50 @@ public class ProjectOverviewServiceImpl implements ProjectOverviewService {
     private final ProjectSourceMapper projectSourceMapper;
     private final FileEntityMapper fileEntityMapper;
     private final ProjectOverviewMapper projectOverviewMapper;
-    private final ProjectMapper projectMapper;
     private final FileContentService fileContentService;
     private final ChatModel chatModel;
     private final ObjectMapper objectMapper;
     private final RedisUtil redisUtil;
 
+    /**
+     * 生成概况：定位目录 → 读 pom/README → 裁剪 → 调 LLM → 落库 + 写缓存。
+     * 不修改 project.analysis_status —— 分析状态统一由 TaskService 维护（单一真相来源）。
+     */
     @Override
-    public ProjectOverviewResponse projectOverview(Long projectId, boolean force) {
-        // 幂等：非强刷时先读缓存、再读库；已分析过则直接返回，不重复调用 LLM
-        if (!force) {
-            ProjectOverviewResponse cached = readCachedOverview(projectId);
-            if (cached != null) {
-                return cached;
-            }
-            ProjectOverview existing = selectExisting(projectId);
-            if (existing != null) {
-                ProjectOverviewResponse response = toResponse(existing);
-                cacheOverview(projectId, response);
-                return response;
-            }
+    public ProjectOverviewResponse generateOverview(Long projectId) {
+        // 1. 定位项目落盘根目录（project_source.content 存的是解压根目录绝对路径）
+        ProjectSource source = findSource(projectId);
+        Path extractDir = Paths.get(source.getContent());
+        Long rootFileId = source.getFileId();
+
+        // 2. 读取 pom.xml 与 README
+        String pom = readPom(projectId, rootFileId, extractDir);
+        String readme = readReadme(projectId, rootFileId, extractDir);
+
+        // 3. 裁剪 pom
+        String cutPom = cutPom(pom);
+
+        // 4. 组装提示词
+        String prompt = buildPrompt(readme, cutPom);
+
+        // 5. 调用 LLM 得到结构化概况
+        ProjectOverviewResponse response = callLlm(prompt);
+
+        // 6. 落库（幂等覆盖）并写缓存
+        saveOverview(projectId, response);
+        cacheOverview(projectId, response);
+        return response;
+    }
+
+    //    先读缓存，再读数据库，都没有就返回 null（供提交前判断"是否已有结果"用）
+    @Override
+    public ProjectOverviewResponse tryGetExistingOverview(Long projectId) {
+        ProjectOverviewResponse cached = readCachedOverview(projectId);
+        if (cached != null) {
+            return cached;
         }
-
-        try {
-            // 1. 定位项目落盘根目录（project_source.content 存的是解压根目录绝对路径）
-            ProjectSource source = findSource(projectId);
-            Path extractDir = Paths.get(source.getContent());
-            Long rootFileId = source.getFileId();
-
-            // 2. 读取 pom.xml 与 README
-            String pom = readPom(projectId, rootFileId, extractDir);
-            String readme = readReadme(projectId, rootFileId, extractDir);
-
-            // 3. 裁剪 pom
-            String cutPom = cutPom(pom);
-
-            // 4. 组装提示词
-            String prompt = buildPrompt(readme, cutPom);
-
-            // 5. 调用 LLM 得到结构化概况
-            ProjectOverviewResponse response = callLlm(prompt);
-
-            // 6. 落库（幂等覆盖）并置为已完成，同时写缓存
-            saveOverview(projectId, response);
-            updateAnalysisStatus(projectId, ProjectAnalysisStatus.COMPLETED);
-            cacheOverview(projectId, response);
-            return response;
-        } catch (BusinessException e) {
-            updateAnalysisStatusQuietly(projectId, ProjectAnalysisStatus.FAILED);
-            throw e;
-        } catch (Exception e) {
-            updateAnalysisStatusQuietly(projectId, ProjectAnalysisStatus.FAILED);
-            log.error("项目分析失败 projectId={}", projectId, e);
-            throw new BusinessException("项目分析失败: " + e.getMessage());
-        }
+        ProjectOverview overview = selectExisting(projectId);
+        return overview == null ? null : toResponse(overview);
     }
 
     @Override
@@ -121,32 +108,19 @@ public class ProjectOverviewServiceImpl implements ProjectOverviewService {
         cacheOverview(projectId, response);
         return response;
     }
-
-    private void updateAnalysisStatus(Long projectId, String status) {
-        Project update = new Project();
-        update.setId(projectId);
-        update.setAnalysisStatus(status);
-        projectMapper.updateById(update);
-    }
-
-    private void updateAnalysisStatusQuietly(Long projectId, String status) {
-        try {
-            updateAnalysisStatus(projectId, status);
-        } catch (Exception e) {
-            log.warn("更新项目分析状态失败 projectId={}, status={}", projectId, status, e);
-        }
-    }
-
+//
     private String overviewCacheKey(Long projectId) {
         return OVERVIEW_CACHE_KEY_PREFIX + projectId;
     }
 
+//读取缓存，先判断有没有，将缓存的内容转化ProjectOverviewResponse对象类型返回
     private ProjectOverviewResponse readCachedOverview(Long projectId) {
         Object value = redisUtil.get(overviewCacheKey(projectId));
         if (!(value instanceof String json) || json.isBlank()) {
             return null;
         }
         try {
+//            把这段json字符串转成ProjectOverviewResponse这个类的对象，然后返回出去
             return objectMapper.readValue(json, new TypeReference<ProjectOverviewResponse>() {});
         } catch (JacksonException e) {
             log.warn("读取概况缓存失败 projectId={}", projectId, e);
@@ -164,6 +138,7 @@ public class ProjectOverviewServiceImpl implements ProjectOverviewService {
         }
     }
 
+//如果redis找不到就去数据库里找Overview
     private ProjectOverview selectExisting(Long projectId) {
         return projectOverviewMapper.selectOne(
                 new LambdaQueryWrapper<ProjectOverview>()

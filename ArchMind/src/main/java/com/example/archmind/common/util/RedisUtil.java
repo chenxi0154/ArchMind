@@ -117,4 +117,10 @@ public class RedisUtil {
         HashOperations<String, String, Object> ops = redisTemplate.opsForHash();
         return ops.hasKey(key, field);
     }
+//这个方法尝试往 Redis 存数据，只有 key 不存在的时候才存，同时给这个 key 设置过期时间。存成功返回 true，没存上（key 已经存在）就返回 false
+    public Boolean setIfAbsent(String key,Object value,long timeout,TimeUnit unit){
+
+        return redisTemplate.opsForValue().setIfAbsent(key,value,timeout,unit);
+
+    }
 }
